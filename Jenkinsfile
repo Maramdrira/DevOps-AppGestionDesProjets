@@ -49,8 +49,7 @@ pipeline {
                 echo 'Analyzing with SonarQube...'
                 dir('backend') {
                     withSonarQubeEnv('SonarQube') {
-                        sh 'mvn sonar:sonar -Dsonar.projectKey=devops-backend -Dsonar.projectName=DevOps-Backend'
-                    }
+sh 'mvn org.sonarsource.scanner.maven:sonar-maven-plugin:3.11.0.3922:sonar -Dsonar.projectKey=devops-backend -Dsonar.projectName=DevOps-Backend'                    }
                 }
             }
         }
