@@ -1,3 +1,4 @@
+name: devops-app
 services:
   mysql:
     image: mysql:8.0
