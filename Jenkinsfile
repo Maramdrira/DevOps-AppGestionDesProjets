@@ -94,13 +94,20 @@ sh 'mvn org.sonarsource.scanner.maven:sonar-maven-plugin:3.11.0.3922:sonar -Dson
             steps {
                 echo 'Pushing images...'
                 sh 'echo $DOCKER_HUB_CREDS_PSW | docker login -u $DOCKER_HUB_CREDS_USR --password-stdin'
-                sh "docker push ${IMAGE_BACKEND}:${TAG}"
-                sh "docker push ${IMAGE_BACKEND}:latest"
-                sh "docker push ${IMAGE_FRONTEND}:${TAG}"
-                sh "docker push ${IMAGE_FRONTEND}:latest"
+                retry(3) {
+                    sh "docker push ${IMAGE_BACKEND}:${TAG}"
+                }
+                retry(3) {
+                    sh "docker push ${IMAGE_BACKEND}:latest"
+                }
+                retry(3) {
+                    sh "docker push ${IMAGE_FRONTEND}:${TAG}"
+                }
+                retry(3) {
+                    sh "docker push ${IMAGE_FRONTEND}:latest"
+                }
             }
         }
-
         stage('Deploy with Docker Compose') {
             steps {
                 echo 'Deploying stack...'
