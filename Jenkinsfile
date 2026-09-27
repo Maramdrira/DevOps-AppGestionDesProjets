@@ -8,8 +8,8 @@ pipeline {
 
     environment {
         DOCKER_HUB_CREDS = credentials('dockerhub-creds')
-        IMAGE_BACKEND = "alaa-rami/devops-backend"
-        IMAGE_FRONTEND = "alaa-rami/devops-frontend"
+        IMAGE_BACKEND = "driramaram/devops-backend"
+        IMAGE_FRONTEND = "driramaram/devops-frontend"
         TAG = "v${BUILD_NUMBER}"
     }
 
