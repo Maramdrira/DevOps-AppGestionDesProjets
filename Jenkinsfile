@@ -30,29 +30,25 @@ pipeline {
             }
         }
 
-	 stage('3. SonarQube + JaCoCo ) {
-	            steps {
-	                dir('backend') {
-	                    echo 'Running unit tests (generates JaCoCo coverage)...'
-	                    sh 'mvn test'
+        stage('3. SonarQube + JaCoCo + Quality Gate') {
+            steps {
+                dir('backend') {
+                    echo 'Running tests to generate JaCoCo coverage data...'
+                    sh 'mvn test'
 
-	                    echo 'Running SonarQube analysis with JaCoCo coverage...'
-	                    withSonarQubeEnv('SonarQube') {
-	                        sh 'mvn org.sonarsource.scanner.maven:sonar-maven-plugin:3.11.0.3922:sonar -Dsonar.projectKey=devops-backend -Dsonar.projectName=DevOps-Backend -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml'
-	                    }
+                    echo 'Running SonarQube analysis with JaCoCo coverage...'
+                    withSonarQubeEnv('SonarQube') {
+                        sh 'mvn org.sonarsource.scanner.maven:sonar-maven-plugin:3.11.0.3922:sonar -Dsonar.projectKey=devops-backend -Dsonar.projectName=DevOps-Backend -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml'
+                    }
 
-	                    echo 'Waiting for Quality Gate...'
-	                    timeout(time: 5, unit: 'MINUTES') {
-	                        waitForQualityGate abortPipeline: false
-	                    }
-	                }
-	            }
-	            post {
-	                always {
-	                    junit 'backend/target/surefire-reports/*.xml'
-	                }
-	            }
-	        }
+                    echo 'Waiting for Quality Gate...'
+                    timeout(time: 5, unit: 'MINUTES') {
+                        waitForQualityGate abortPipeline: false
+                    }
+                }
+            }
+        }
+
         stage('4. Test Backend') {
             steps {
                 echo 'mvn test'
