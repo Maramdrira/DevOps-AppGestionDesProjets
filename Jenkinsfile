@@ -30,25 +30,29 @@ pipeline {
             }
         }
 
-        stage('3. SonarQube + JaCoCo Analysis+ Quality Gate') {
-            steps {
-                dir('backend') {
-                    echo 'Preparing test data (needed for JaCoCo coverage)...'
-                    sh 'mvn test -DskipTests=false || true'
+	 stage('3. SonarQube + JaCoCo ) {
+	            steps {
+	                dir('backend') {
+	                    echo 'Running unit tests (generates JaCoCo coverage)...'
+	                    sh 'mvn test'
 
-                    echo 'Running SonarQube analysis with JaCoCo coverage...'
-                    withSonarQubeEnv('SonarQube') {
-                        sh 'mvn org.sonarsource.scanner.maven:sonar-maven-plugin:3.11.0.3922:sonar -Dsonar.projectKey=devops-backend -Dsonar.projectName=DevOps-Backend -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml'
-                    }
+	                    echo 'Running SonarQube analysis with JaCoCo coverage...'
+	                    withSonarQubeEnv('SonarQube') {
+	                        sh 'mvn org.sonarsource.scanner.maven:sonar-maven-plugin:3.11.0.3922:sonar -Dsonar.projectKey=devops-backend -Dsonar.projectName=DevOps-Backend -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml'
+	                    }
 
-                    echo 'Waiting for Quality Gate...'
-                    timeout(time: 5, unit: 'MINUTES') {
-                        waitForQualityGate abortPipeline: false
-                    }
-                }
-            }
-        }
-
+	                    echo 'Waiting for Quality Gate...'
+	                    timeout(time: 5, unit: 'MINUTES') {
+	                        waitForQualityGate abortPipeline: false
+	                    }
+	                }
+	            }
+	            post {
+	                always {
+	                    junit 'backend/target/surefire-reports/*.xml'
+	                }
+	            }
+	        }
         stage('4. Test Backend') {
             steps {
                 echo 'mvn test'
