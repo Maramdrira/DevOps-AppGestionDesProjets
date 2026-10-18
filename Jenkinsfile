@@ -58,7 +58,6 @@ pipeline {
                 }
             }
         }
-
         stage('4. Package Backend and Build Frontend') {
             steps {
                 echo 'mvn package -DskipTests'
