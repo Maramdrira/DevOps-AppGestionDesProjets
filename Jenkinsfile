@@ -43,12 +43,14 @@ pipeline {
                     }
 
                     echo 'Waiting for Quality Gate (non-blocking)...'
-                    try {
-                        timeout(time: 5, unit: 'MINUTES') {
-                            waitForQualityGate abortPipeline: false
+                    script {
+                        try {
+                            timeout(time: 5, unit: 'MINUTES') {
+                                waitForQualityGate abortPipeline: false
+                            }
+                        } catch (err) {
+                            echo "Quality Gate returned FAILED (${err.message}). Continuing pipeline anyway."
                         }
-                    } catch (err) {
-                        echo "Quality Gate returned FAILED (${err.message}). Continuing pipeline anyway."
                     }
                 }
             }

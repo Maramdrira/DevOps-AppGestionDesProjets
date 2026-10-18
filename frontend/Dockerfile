@@ -2,15 +2,16 @@
 FROM node:22-alpine AS build
 WORKDIR /app
 COPY package*.json ./
-RUN npm config set fetch-retries 5 && \
-    npm config set fetch-retry-mintimeout 20000 && \
-    npm config set fetch-retry-maxtimeout 120000 && \
-    npm install --legacy-peer-deps
+RUN npm install --legacy-peer-deps
 COPY . .
 RUN npm run build -- --configuration production || npm run build
 
 # ---- Stage 2: Serve with Nginx ----
 FROM nginx:alpine
+
+# Choose which nginx config to use (compose or k8s)
+ARG NGINX_CONFIG=nginx.conf
+
 RUN rm -rf /usr/share/nginx/html/*
 COPY --from=build /app/dist /tmp/dist
 RUN if [ -d /tmp/dist/browser ]; then \
@@ -19,6 +20,7 @@ RUN if [ -d /tmp/dist/browser ]; then \
       cp -r /tmp/dist/*/browser/* /usr/share/nginx/html/ 2>/dev/null || \
       cp -r /tmp/dist/* /usr/share/nginx/html/; \
     fi
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+COPY ${NGINX_CONFIG} /etc/nginx/conf.d/default.conf
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]

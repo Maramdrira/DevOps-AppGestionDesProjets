@@ -1,0 +1,69 @@
+# ─────────────────────────────────────────────
+# 1. ConfigMap
+# ─────────────────────────────────────────────
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: spring-config
+  namespace: devops
+data:
+  SPRING_DATASOURCE_URL: "jdbc:mysql://mysql-service:3306/springdb?createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true&useSSL=false"
+---
+# ─────────────────────────────────────────────
+# 2. Secret (base64-encoded)
+# ─────────────────────────────────────────────
+apiVersion: v1
+kind: Secret
+metadata:
+  name: spring-secret
+  namespace: devops
+type: Opaque
+data:
+  SPRING_DATASOURCE_USERNAME: c3ByaW5n
+  SPRING_DATASOURCE_PASSWORD: c3ByaW5nMTIz
+---
+# ─────────────────────────────────────────────
+# 3. Deployment Spring Boot
+# ─────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spring
+  namespace: devops
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: spring
+  template:
+    metadata:
+      labels:
+        app: spring
+    spec:
+      containers:
+        - name: spring
+          image: driramaram/devops-backend:latest
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: spring-config
+            - secretRef:
+                name: spring-secret
+---
+# ─────────────────────────────────────────────
+# 4. Service Spring Boot (NodePort)
+# ─────────────────────────────────────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: spring-service
+  namespace: devops
+spec:
+  selector:
+    app: spring
+  ports:
+    - port: 8080
+      targetPort: 8080
+      nodePort: 30081
+  type: NodePort
