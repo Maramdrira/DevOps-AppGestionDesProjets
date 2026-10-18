@@ -114,8 +114,8 @@ pipeline {
         stage('8. Deploy to Kubernetes ') {
             steps {
                 echo 'Updating Kubernetes deployments with new image tags...'
-                withKubeConfig(credentialsId: 'kubernetes-config') {
-                    sh "kubectl config current-context"
+                withCredentials([file(credentialsId: 'kubernetes-config', variable: 'KUBECONFIG')]) {
+                    sh 'kubectl config current-context'
                     sh "kubectl get pods -n ${K8S_NAMESPACE} || true"
 
                     sh "kubectl set image deployment/spring spring=${IMAGE_BACKEND}:${TAG} -n ${K8S_NAMESPACE} || echo 'spring deployment not found'"
