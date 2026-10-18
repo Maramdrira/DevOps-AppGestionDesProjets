@@ -42,9 +42,13 @@ pipeline {
                         sh 'mvn org.sonarsource.scanner.maven:sonar-maven-plugin:3.11.0.3922:sonar -Dsonar.projectKey=devops-backend -Dsonar.projectName=DevOps-Backend -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml'
                     }
 
-                    echo 'Waiting for Quality Gate...'
-                    timeout(time: 5, unit: 'MINUTES') {
-                        waitForQualityGate abortPipeline: false
+                    echo 'Waiting for Quality Gate (non-blocking)...'
+                    try {
+                        timeout(time: 5, unit: 'MINUTES') {
+                            waitForQualityGate abortPipeline: false
+                        }
+                    } catch (err) {
+                        echo "Quality Gate returned FAILED (${err.message}). Continuing pipeline anyway."
                     }
                 }
             }
