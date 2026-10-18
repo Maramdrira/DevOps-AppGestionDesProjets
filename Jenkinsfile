@@ -11,6 +11,7 @@ pipeline {
         IMAGE_BACKEND = "driramaram/devops-backend"
         IMAGE_FRONTEND = "driramaram/devops-frontend"
         TAG = "v${BUILD_NUMBER}"
+        K8S_NAMESPACE = "devops"
     }
 
     stages {
@@ -30,10 +31,10 @@ pipeline {
             }
         }
 
-        stage('3. SonarQube + JaCoCo + Quality Gate') {
+        stage('3. Test + SonarQube + JaCoCo + Quality Gate') {
             steps {
                 dir('backend') {
-                    echo 'Running tests to generate JaCoCo coverage data...'
+                    echo 'Running unit tests (generates JaCoCo coverage)...'
                     sh 'mvn test'
 
                     echo 'Running SonarQube analysis with JaCoCo coverage...'
@@ -47,15 +48,6 @@ pipeline {
                     }
                 }
             }
-        }
-
-        stage('4. Test Backend') {
-            steps {
-                echo 'mvn test'
-                dir('backend') {
-                    sh 'mvn test'
-                }
-            }
             post {
                 always {
                     junit 'backend/target/surefire-reports/*.xml'
@@ -63,7 +55,7 @@ pipeline {
             }
         }
 
-        stage('5. Package Backend and Build Frontend') {
+        stage('4. Package Backend and Build Frontend') {
             steps {
                 echo 'mvn package -DskipTests'
                 dir('backend') {
@@ -77,17 +69,20 @@ pipeline {
             }
         }
 
-        stage('6. Build Docker Images') {
+        stage('5. Build Docker Images (Compose + K8s)') {
             steps {
-                echo 'docker build'
+                echo 'docker build (Compose variant)'
                 sh "docker build -t ${IMAGE_BACKEND}:${TAG} -t ${IMAGE_BACKEND}:latest ./backend"
                 sh "docker build -t ${IMAGE_FRONTEND}:${TAG} -t ${IMAGE_FRONTEND}:latest ./frontend"
+
+                echo 'docker build (K8s variant with nginx-k8s.conf)'
+                sh "docker build --build-arg NGINX_CONFIG=nginx-k8s.conf -t ${IMAGE_FRONTEND}:k8s -t ${IMAGE_FRONTEND}:k8s-${TAG} ./frontend"
             }
         }
 
-        stage('7. Push to Docker Hub') {
+        stage('6. Push to Docker Hub') {
             steps {
-                echo 'docker push'
+                echo 'docker push (Compose + K8s tags)'
                 sh 'echo $DOCKER_HUB_CREDS_PSW | docker login -u $DOCKER_HUB_CREDS_USR --password-stdin'
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     retry(3) {
@@ -95,17 +90,37 @@ pipeline {
                         sh "docker push ${IMAGE_BACKEND}:latest"
                         sh "docker push ${IMAGE_FRONTEND}:${TAG}"
                         sh "docker push ${IMAGE_FRONTEND}:latest"
+                        sh "docker push ${IMAGE_FRONTEND}:k8s"
+                        sh "docker push ${IMAGE_FRONTEND}:k8s-${TAG}"
                     }
                 }
             }
         }
 
-        stage('8. Deploy with Docker Compose') {
+        stage('7. Deploy to Docker Compose') {
             steps {
                 echo 'docker compose up -d'
                 sh 'docker compose down --remove-orphans || true'
                 sh 'docker rm -f devops-mysql devops-backend devops-frontend 2>/dev/null || true'
                 sh 'docker compose up -d'
+            }
+        }
+
+        stage('8. Deploy to Kubernetes ') {
+            steps {
+                echo 'Updating Kubernetes deployments with new image tags...'
+                withKubeConfig(credentialsId: 'kubernetes-config') {
+                    sh "kubectl config current-context"
+                    sh "kubectl get pods -n ${K8S_NAMESPACE} || true"
+
+                    sh "kubectl set image deployment/spring spring=${IMAGE_BACKEND}:${TAG} -n ${K8S_NAMESPACE} || echo 'spring deployment not found'"
+                    sh "kubectl set image deployment/frontend frontend=${IMAGE_FRONTEND}:k8s-${TAG} -n ${K8S_NAMESPACE} || echo 'frontend deployment not found'"
+
+                    sh "kubectl rollout status deployment/spring -n ${K8S_NAMESPACE} --timeout=180s || echo 'spring rollout skipped'"
+                    sh "kubectl rollout status deployment/frontend -n ${K8S_NAMESPACE} --timeout=180s || echo 'frontend rollout skipped'"
+
+                    sh "kubectl get pods -n ${K8S_NAMESPACE}"
+                }
             }
         }
     }
@@ -118,7 +133,7 @@ pipeline {
             echo 'Pipeline failed.'
         }
         unstable {
-            echo 'Pipeline unstable (push may have failed but deploy continued).'
+            echo 'Pipeline unstable.'
         }
         always {
             cleanWs()
